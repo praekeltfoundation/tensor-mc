@@ -66,15 +66,18 @@ class MCSites(Source):
         s = False
 
         if request.code == 200:
-            result = json.loads(body)
-            site_valid = result.get('id') == id
-            if site_valid:
+            if body == '{}':
+                # Using old style check
+                r = "Site okay"
                 s = True
-                r = "%s %s" % (result['id'], result['version'])
             else:
-                r = "Invalid content %s != %s" % (id, result.get('id'))
+                result = json.loads(body)
+                if result.get('id') == id:
+                    s = True
+                    r = "%s %s" % (result['id'], result['version'])
+                else:
+                    r = "Invalid content %s != %s" % (id, result.get('id'))
         else:
-            print "Code %s - %s" % (request.code, id)
             r = "Invalid response code %s" % request.code
 
         self.queueBack(self.createEvent(s and 'ok' or 'critical', r, 
@@ -91,10 +94,14 @@ class MCSites(Source):
         try:
             yield request.getBody(url)
         except Exception, e:
-            print "Error %s connecting %s" % (e, domain)
             self.queueBack(self.createEvent('critical',
                 'Connection error %s' % e, 0,
                 prefix="%s.uptime" % id.strip('/')))
+
+    def chunks(self, l, n):
+        """Yield successive n-sized chunks from l."""
+        for i in xrange(0, len(l), n):
+            yield l[i:i+n]
 
     @defer.inlineCallbacks
     def get(self):
@@ -104,12 +111,12 @@ class MCSites(Source):
             defer.returnValue(self.createEvent('critical',
                 'Mission control DB unreachable %s' % e, 0, prefix='mc.uptime'))
 
-        deferreds = []
+        for blk in self.chunks(sites, 10):
+            deferreds = [
+                self._site_health(domain, hc, id) for id, domain, hc in blk]
 
-        for id, domain, hc in sites:
-            deferreds.append(self._site_health(domain, hc, id))
-
-        results = yield defer.DeferredList(deferreds)
+            # Wait for this block
+            results = yield defer.DeferredList(deferreds)
 
         defer.returnValue(self.createEvent('ok',
                 'Mission control DB', 0, prefix='mc.uptime'))
