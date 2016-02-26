@@ -119,4 +119,4 @@ class MCSites(Source):
             results = yield defer.DeferredList(deferreds)
 
         defer.returnValue(self.createEvent('ok',
-                'Mission control DB', 0, prefix='mc.uptime'))
+                'Mission control DB', 100, prefix='mc.uptime'))

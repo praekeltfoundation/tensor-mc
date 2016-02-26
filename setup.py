@@ -3,12 +3,13 @@ from setuptools import setup, find_packages
 
 setup(
     name="seed.tensor",
-    version='0.0.1',
+    version='0.0.3',
     url='http://github.com/praekeltfoundation/seed-tensor',
     license='MIT',
     description="Tensor sources for Seed components",
     author='Colin Alston',
     author_email='colin@praekelt.com',
+    packages=find_packages(),
     include_package_data=True,
     install_requires=[
         'Twisted',
